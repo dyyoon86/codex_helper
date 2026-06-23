@@ -2,7 +2,8 @@ import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { checkCodex, runCodex, getLatestUsage } from './codex'
-import type { RunRequest, CodexStreamEvent } from '../src/shared/types'
+import { checkSystem, installDeps, login } from './system'
+import type { RunRequest, CodexStreamEvent, SetupEvent } from '../src/shared/types'
 
 // vite-plugin-electron(CJS) 환경에선 __dirname 사용 가능. ESM 폴백도 둠.
 const DIRNAME =
@@ -52,6 +53,17 @@ app.whenReady().then(() => {
 
   // 마지막으로 알려진 사용량/한도(시작 시 표시)
   ipcMain.handle('codex:latestUsage', async () => getLatestUsage())
+
+  // 첫 실행 점검 / 설치 / 로그인
+  ipcMain.handle('system:check', async () => checkSystem())
+  ipcMain.handle('system:install', async (e) => {
+    const emit = (ev: SetupEvent) => e.sender.send('setup:event', ev)
+    return installDeps(emit)
+  })
+  ipcMain.handle('system:login', async (e) => {
+    const emit = (ev: SetupEvent) => e.sender.send('setup:event', ev)
+    return login(emit)
+  })
 
   // codex 실행(스트리밍은 'codex:event'로 push)
   ipcMain.handle('codex:run', async (e, req: RunRequest, runId: string) => {

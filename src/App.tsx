@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import type { CodexStatus, UsageInfo } from './shared/types'
+import type { SystemStatus, UsageInfo } from './shared/types'
 import { ChatView, type ChatMessage } from './components/ChatView'
 import { UsageBar } from './components/UsageBar'
+import { SetupGate } from './components/SetupGate'
 
 let runCounter = 0
 
 export function App() {
-  const [status, setStatus] = useState<CodexStatus | null>(null)
+  const [sys, setSys] = useState<SystemStatus | null>(null)
   const [cwd, setCwd] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -14,8 +15,14 @@ export function App() {
   const [usage, setUsage] = useState<UsageInfo | null>(null)
   const sessionId = useRef<string | undefined>(undefined)
 
+  async function refresh(): Promise<SystemStatus> {
+    const s = await window.codex.checkSystem()
+    setSys(s)
+    return s
+  }
+
   useEffect(() => {
-    window.codex.checkCodex().then(setStatus)
+    refresh()
     window.codex.getLatestUsage().then(setUsage)
   }, [])
 
@@ -88,7 +95,29 @@ export function App() {
     await sendWith(prompt, dir)
   }
 
-  const ready = status?.installed && status?.loggedIn && cwd
+  // 로딩 중
+  if (!sys) {
+    return (
+      <div className="app">
+        <div className="setup">
+          <div className="setup-card">
+            <div className="setup-head">
+              <span className="mark">작업실</span>
+              <span className="dot" />
+            </div>
+            <p className="setup-sub">준비 상태를 확인하고 있어요…</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // node/codex/로그인 중 하나라도 안 되어 있으면 준비 화면
+  if (!sys.ready) {
+    return <SetupGate sys={sys} onReady={refresh} recheck={refresh} />
+  }
+
+  const ready = cwd
 
   return (
     <div className="app">
@@ -99,11 +128,8 @@ export function App() {
           <span className="ver">M1</span>
         </div>
         <div className="status">
-          <Chip
-            ok={!!status?.installed}
-            label={status?.installed ? 'AI 엔진 준비됨' : 'AI 엔진 없음'}
-          />
-          <Chip ok={!!status?.loggedIn} label={status?.loggedIn ? '로그인됨' : '로그인 필요'} />
+          <Chip ok={sys.codex.ok} label={sys.codex.ok ? 'AI 엔진 준비됨' : 'AI 엔진 없음'} />
+          <Chip ok={sys.loggedIn} label={sys.loggedIn ? '로그인됨' : '로그인 필요'} />
           <button className="folder-btn" onClick={pickFolder}>
             {cwd ? `📁 ${shorten(cwd)}` : '📁 작업 폴더'}
           </button>

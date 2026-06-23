@@ -58,9 +58,47 @@ export interface CodexStatus {
   codexPath?: string
 }
 
+export interface ToolStatus {
+  ok: boolean
+  version?: string
+}
+
+/** 첫 실행 점검 결과: AI 실행 준비 프로그램(node)·엔진(codex)·로그인 */
+export interface SystemStatus {
+  node: ToolStatus
+  codex: ToolStatus
+  loggedIn: boolean
+  /** 모두 준비됐는지 */
+  ready: boolean
+  platform: string
+}
+
+/** 설치/로그인 진행 상황(셋업 마법사로 스트리밍) */
+export interface SetupEvent {
+  /** 어떤 단계 */
+  step: 'node' | 'codex' | 'login' | 'done'
+  /** 사람이 읽을 진행 문구 */
+  text: string
+  level?: 'info' | 'ok' | 'error'
+}
+
+export interface SetupResult {
+  ok: boolean
+  /** 친절한 한국어 에러 + 후속 안내 */
+  error?: string
+  status: SystemStatus
+}
+
 export interface CodexAPI {
   selectFolder: () => Promise<string | null>
   checkCodex: () => Promise<CodexStatus>
+  /** 첫 실행 점검: node/codex/로그인 */
+  checkSystem: () => Promise<SystemStatus>
+  /** 부족한 구성요소 자동 준비(node·codex 설치). 진행은 onSetup으로 스트리밍 */
+  installDeps: () => Promise<SetupResult>
+  /** 공식 OpenAI 로그인(브라우저 OAuth) */
+  login: () => Promise<SetupResult>
+  onSetup: (cb: (e: SetupEvent) => void) => () => void
   runCodex: (req: RunRequest, runId: string) => Promise<RunResult>
   /** 시작 시 마지막으로 알려진 사용량/한도(가장 최근 세션 기준). 없으면 null */
   getLatestUsage: () => Promise<UsageInfo | null>

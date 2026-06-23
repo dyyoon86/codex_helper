@@ -4,8 +4,11 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const dist = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist')
-const DRIVE = process.argv[2] !== 'welcome' // 'welcome' 인자 주면 자동구동 끄고 시작화면만
-const OUT = DRIVE ? 'preview.html' : 'preview-welcome.html'
+const MODE = process.argv[2] || 'drive' // drive | welcome | setup
+const DRIVE = MODE === 'drive'
+const SETUP = MODE === 'setup'
+const OUT =
+  MODE === 'drive' ? 'preview.html' : MODE === 'welcome' ? 'preview-welcome.html' : 'preview-setup.html'
 let html = readFileSync(join(dist, 'index.html'), 'utf-8')
 // 미리보기(캡처)용: CSP 메타 제거 → inline mock 스크립트 허용
 html = html.replace(/<meta[^>]*Content-Security-Policy[^>]*>/i, '')
@@ -17,6 +20,14 @@ const mock = `<script>
     _cb: null,
     selectFolder: async function () { return 'C:\\\\Users\\\\dyyoon\\\\Documents\\\\분기보고서'; },
     checkCodex: async function () { return { installed: true, loggedIn: true, version: 'codex-cli 0.141.0' }; },
+    checkSystem: async function () {
+      return ${SETUP}
+        ? { node: { ok: true, version: 'v22.11.0' }, codex: { ok: false }, loggedIn: false, ready: false, platform: 'win32' }
+        : { node: { ok: true, version: 'v22.11.0' }, codex: { ok: true, version: 'codex-cli 0.141.0' }, loggedIn: true, ready: true, platform: 'win32' };
+    },
+    installDeps: async function () { return { ok: true, status: { node:{ok:true}, codex:{ok:true}, loggedIn:true, ready:true, platform:'win32' } }; },
+    login: async function () { return { ok: true, status: { node:{ok:true}, codex:{ok:true}, loggedIn:true, ready:true, platform:'win32' } }; },
+    onSetup: function () { return function () {}; },
     getLatestUsage: async function () {
       return { planType: 'plus', totalTokens: 12285, contextWindow: 258400,
         primary: { usedPercent: 6, windowMinutes: 300, resetsAt: now + 3 * 3600 },

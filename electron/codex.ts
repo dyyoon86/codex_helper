@@ -1,8 +1,8 @@
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import type { RunRequest, RunResult, CodexStatus } from '../src/shared/types'
+import type { RunRequest, RunResult, CodexStatus, UsageInfo } from '../src/shared/types'
 
 /**
  * codex 실행 파일 경로 해석.
@@ -46,6 +46,107 @@ export function checkCodex(): Promise<CodexStatus> {
       })
     })
   })
+}
+
+const SESSIONS_DIR = join(homedir(), '.codex', 'sessions')
+
+/** ~/.codex/sessions 트리를 훑어 rollout-*.jsonl 파일을 mtime 내림차순으로 수집. */
+function listRolloutFiles(filter?: (name: string) => boolean): string[] {
+  if (!existsSync(SESSIONS_DIR)) return []
+  const out: string[] = []
+  const stack = [SESSIONS_DIR]
+  while (stack.length) {
+    const dir = stack.pop()!
+    let entries
+    try {
+      entries = readdirSync(dir, { withFileTypes: true })
+    } catch {
+      continue
+    }
+    for (const e of entries) {
+      const p = join(dir, e.name)
+      if (e.isDirectory()) stack.push(p)
+      else if (
+        e.isFile() &&
+        e.name.startsWith('rollout-') &&
+        e.name.endsWith('.jsonl') &&
+        (!filter || filter(e.name))
+      )
+        out.push(p)
+    }
+  }
+  return out.sort((a, b) => safeMtime(b) - safeMtime(a))
+}
+
+function safeMtime(p: string): number {
+  try {
+    return statSync(p).mtimeMs
+  } catch {
+    return 0
+  }
+}
+
+/** rollout jsonl에서 마지막 token_count 이벤트(=최신 사용량/한도)를 파싱. */
+function parseUsageFromRollout(file: string): UsageInfo | null {
+  let content: string
+  try {
+    content = readFileSync(file, 'utf-8')
+  } catch {
+    return null
+  }
+  let info: UsageInfo | null = null
+  for (const line of content.split('\n')) {
+    const t = line.trim()
+    if (!t || !t.includes('token_count')) continue
+    let o: any
+    try {
+      o = JSON.parse(t)
+    } catch {
+      continue
+    }
+    const payload = o?.payload
+    if (payload?.type !== 'token_count') continue
+    const rl = payload.rate_limits
+    const total = payload.info?.total_token_usage?.total_tokens
+    const ctx = payload.info?.model_context_window
+    info = {
+      planType: rl?.plan_type ?? undefined,
+      totalTokens: typeof total === 'number' ? total : undefined,
+      contextWindow: typeof ctx === 'number' ? ctx : undefined,
+      primary: rl?.primary
+        ? {
+            usedPercent: rl.primary.used_percent,
+            windowMinutes: rl.primary.window_minutes,
+            resetsAt: rl.primary.resets_at,
+          }
+        : undefined,
+      secondary: rl?.secondary
+        ? {
+            usedPercent: rl.secondary.used_percent,
+            windowMinutes: rl.secondary.window_minutes,
+            resetsAt: rl.secondary.resets_at,
+          }
+        : undefined,
+    }
+  }
+  return info
+}
+
+/** 특정 세션(thread_id)의 최신 사용량/한도. */
+export function getSessionUsage(threadId: string): UsageInfo | null {
+  const files = listRolloutFiles((name) => name.includes(threadId))
+  if (!files.length) return null
+  return parseUsageFromRollout(files[0])
+}
+
+/** 가장 최근 세션의 사용량/한도(시작 시 표시용). */
+export function getLatestUsage(): UsageInfo | null {
+  const files = listRolloutFiles()
+  for (const f of files) {
+    const u = parseUsageFromRollout(f)
+    if (u && (u.primary || u.secondary)) return u
+  }
+  return null
 }
 
 export interface RunHandlers {
@@ -135,10 +236,12 @@ export function runCodex(req: RunRequest, h: RunHandlers): Promise<RunResult> {
 
     child.on('close', (code) => {
       if (stdoutBuf.trim()) handleLine(stdoutBuf)
+      const usage = threadId ? getSessionUsage(threadId) ?? undefined : undefined
       resolve({
         code: code ?? -1,
         threadId,
         finalMessage,
+        usage,
         error: code === 0 ? undefined : stderrBuf.trim() || `codex 종료 코드 ${code}`,
       })
     })

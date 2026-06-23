@@ -44,6 +44,27 @@ body {
 }
 .folder-btn:hover { border-color: var(--accent); }
 
+.usagebar {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 7px 16px; background: var(--panel-2); border-bottom: 1px solid var(--line);
+  font-size: 12px; color: var(--mut);
+}
+.usagebar .plan {
+  font-weight: 800; font-size: 11px; color: var(--accent);
+  border: 1px solid var(--accent); border-radius: 5px; padding: 1px 6px;
+}
+.meter { display: flex; align-items: center; gap: 7px; }
+.meter-label { color: var(--txt); }
+.meter .track {
+  width: 110px; height: 7px; border-radius: 4px; background: #2a2f3a; overflow: hidden;
+}
+.meter .fill { display: block; height: 100%; border-radius: 4px; transition: width .3s; }
+.meter .fill.ok { background: var(--ok); }
+.meter .fill.warn { background: #d4a72c; }
+.meter .fill.danger { background: var(--no); }
+.meter-num { color: var(--mut); min-width: 56px; }
+.usagebar .tok { margin-left: auto; }
+
 .chat { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
 .chat.empty { align-items: center; justify-content: center; }
 .welcome { text-align: center; color: var(--mut); }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import type { CodexStatus } from './shared/types'
+import type { CodexStatus, UsageInfo } from './shared/types'
 import { ChatView, type ChatMessage } from './components/ChatView'
+import { UsageBar } from './components/UsageBar'
 
 let runCounter = 0
 
@@ -10,11 +11,13 @@ export function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [running, setRunning] = useState(false)
+  const [usage, setUsage] = useState<UsageInfo | null>(null)
   const sessionId = useRef<string | undefined>(undefined)
 
-  // 시작 시 codex 상태 점검
+  // 시작 시 codex 상태 점검 + 마지막 사용량 표시
   useEffect(() => {
     window.codex.checkCodex().then(setStatus)
+    window.codex.getLatestUsage().then(setUsage)
   }, [])
 
   async function pickFolder() {
@@ -58,6 +61,7 @@ export function App() {
         runId,
       )
       if (res.threadId) sessionId.current = res.threadId
+      if (res.usage) setUsage(res.usage)
       if (res.error && !res.finalMessage) {
         setMessages((m) =>
           m.map((msg) =>
@@ -85,6 +89,8 @@ export function App() {
           </button>
         </div>
       </header>
+
+      <UsageBar usage={usage} />
 
       <ChatView messages={messages} empty={!cwd} />
 

@@ -1,11 +1,19 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { RunRequest, RunResult, CodexStatus, CodexStreamEvent } from '../src/shared/types'
+import type {
+  RunRequest,
+  RunResult,
+  CodexStatus,
+  CodexStreamEvent,
+  UsageInfo,
+} from '../src/shared/types'
 
 // 렌더러에 안전한 API만 노출(Node 직접 접근 차단).
 contextBridge.exposeInMainWorld('codex', {
   selectFolder: (): Promise<string | null> => ipcRenderer.invoke('dialog:selectFolder'),
 
   checkCodex: (): Promise<CodexStatus> => ipcRenderer.invoke('codex:check'),
+
+  getLatestUsage: (): Promise<UsageInfo | null> => ipcRenderer.invoke('codex:latestUsage'),
 
   runCodex: (req: RunRequest, runId: string): Promise<RunResult> =>
     ipcRenderer.invoke('codex:run', req, runId),

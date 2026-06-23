@@ -30,7 +30,10 @@ export function authPath(): string {
 export function checkCodex(): Promise<CodexStatus> {
   const bin = resolveCodexBin()
   return new Promise((resolve) => {
-    const child = spawn(bin, ['--version'], { stdio: ['ignore', 'pipe', 'pipe'] })
+    const child = spawn(bin, ['--version'], {
+      shell: process.platform === 'win32',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
     let out = ''
     child.stdout.on('data', (d) => (out += d.toString()))
     child.on('error', () =>
@@ -166,9 +169,10 @@ export interface RunHandlers {
  */
 export function runCodex(req: RunRequest, h: RunHandlers): Promise<RunResult> {
   const bin = resolveCodexBin()
+  // 프롬프트는 인자 대신 stdin으로 전달(셸 따옴표/줄바꿈/특수문자 안전).
   const args = req.sessionId
-    ? ['exec', 'resume', req.sessionId, '--json', '--skip-git-repo-check', req.prompt]
-    : ['exec', '--json', '--skip-git-repo-check', '-s', req.sandbox ?? 'read-only', req.prompt]
+    ? ['exec', 'resume', req.sessionId, '--json', '--skip-git-repo-check']
+    : ['exec', '--json', '--skip-git-repo-check', '-s', req.sandbox ?? 'read-only']
 
   return new Promise((resolve) => {
     let threadId: string | undefined
@@ -178,8 +182,13 @@ export function runCodex(req: RunRequest, h: RunHandlers): Promise<RunResult> {
 
     const child = spawn(bin, args, {
       cwd: req.cwd,
-      stdio: ['ignore', 'pipe', 'pipe'], // stdin 닫음
+      // 윈도우는 codex가 codex.cmd라 shell 없이는 ENOENT → shell 사용
+      shell: process.platform === 'win32',
+      stdio: ['pipe', 'pipe', 'pipe'],
     })
+    // 프롬프트 입력 후 stdin 종료
+    child.stdin?.write(req.prompt)
+    child.stdin?.end()
 
     const handleLine = (line: string) => {
       const trimmed = line.trim()

@@ -22,11 +22,12 @@ function resolveCodexBin() {
 function runCodex({ prompt, cwd, sessionId, sandbox = 'read-only' }) {
   const bin = resolveCodexBin()
   const args = sessionId
-    ? ['exec', 'resume', sessionId, '--json', '--skip-git-repo-check', prompt]
-    : ['exec', '--json', '--skip-git-repo-check', '-s', sandbox, prompt]
+    ? ['exec', 'resume', sessionId, '--json', '--skip-git-repo-check']
+    : ['exec', '--json', '--skip-git-repo-check', '-s', sandbox]
   return new Promise((resolve) => {
     let threadId, finalMessage, buf = '', err = ''
-    const child = spawn(bin, args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
+    const child = spawn(bin, args, { cwd, shell: process.platform === 'win32', stdio: ['pipe', 'pipe', 'pipe'] })
+    child.stdin.write(prompt); child.stdin.end()
     const line = (l) => {
       const t = l.trim()
       if (!t) return

@@ -1,0 +1,31 @@
+{
+  "name": "codex-helper",
+  "version": "0.1.0",
+  "description": "터미널 없이 쓰는 Codex 런처/채팅 GUI (작업실)",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "start": "electron .",
+    "smoke:codex": "node scripts/smoke-codex.mjs"
+  },
+  "keywords": ["codex", "electron", "ai", "launcher"],
+  "author": "dyyoon86",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.2.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3",
+    "vite-plugin-electron": "^0.29.0",
+    "vite-plugin-electron-renderer": "^0.14.6"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

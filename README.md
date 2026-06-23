@@ -29,5 +29,20 @@ M0 수요검증 → **M1 코어 래퍼 PoC** → M2 로그인·세션 → M3 설
 
 상세: [docs/milestones.md](docs/milestones.md) · 기획서: [docs/product-plan.md](docs/product-plan.md)
 
-## 현재 상태
-기획·타당성 검증 완료(2026-06-23). M1 착수 준비 — 착수 전 `codex exec --json` 출력 포맷 등 4개 스파이크 실측 예정.
+## 개발/실행
+```bash
+npm install
+npm run smoke:codex   # 실제 codex로 연동·멀티턴 검증(GUI 불필요, 헤드리스 OK)
+npm run typecheck     # 타입체크
+npm run build         # 렌더러+일렉트론 빌드 → dist/, dist-electron/
+npm run dev           # 개발(일렉트론 창 — 디스플레이 필요)
+```
+- codex 경로는 PATH의 `codex` 우선, 없으면 알려진 위치 폴백(환경변수 `CODEX_BIN`로 지정 가능).
+
+## 현재 상태 (2026-06-23)
+**M1 코어 래퍼 완료** — Electron+Vite+React+TS 신규 스택(PasteMotion 무관).
+- ✅ `codex exec --json` 러너 + JSONL 파서 (`electron/codex.ts`), child_process만으로 충분(node-pty 불필요)
+- ✅ 멀티턴 세션 resume, 안전모드 read-only 기본
+- ✅ 폴더 선택 + 채팅 UI (`src/`), IPC 스트리밍
+- ✅ 타입체크/빌드 통과, 실제 codex 스모크 테스트 통과(새 세션+resume)
+- ⏳ GUI 시각 확인은 디스플레이 환경(윈도우/맥)에서. 다음: **M2 로그인 플로우 + M3 설치도우미**.

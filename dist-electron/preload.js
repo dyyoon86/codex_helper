@@ -1,0 +1,1 @@
+"use strict";const e=require("electron");e.contextBridge.exposeInMainWorld("codex",{selectFolder:()=>e.ipcRenderer.invoke("dialog:selectFolder"),checkCodex:()=>e.ipcRenderer.invoke("codex:check"),runCodex:(n,r)=>e.ipcRenderer.invoke("codex:run",n,r),onStream:n=>{const r=(c,o)=>n(o);return e.ipcRenderer.on("codex:event",r),()=>e.ipcRenderer.removeListener("codex:event",r)}});

@@ -1,6 +1,6 @@
 {
   "name": "codex-helper",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "터미널 없이 쓰는 Codex 런처/채팅 GUI (작업실)",
   "main": "dist-electron/main.js",
   "scripts": {

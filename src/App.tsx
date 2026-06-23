@@ -14,6 +14,7 @@ export function App() {
   const [running, setRunning] = useState(false)
   const [usage, setUsage] = useState<UsageInfo | null>(null)
   const [writeMode, setWriteMode] = useState(false) // false=계획만(read-only), true=작업(수정허용)
+  const [model, setModel] = useState('gpt-5.5')
   const sessionId = useRef<string | undefined>(undefined)
 
   async function refresh(): Promise<SystemStatus> {
@@ -66,6 +67,7 @@ export function App() {
           cwd: dir,
           sessionId: sessionId.current,
           sandbox: writeMode ? 'workspace-write' : 'read-only',
+          model,
         },
         runId,
       )
@@ -134,8 +136,17 @@ export function App() {
           <span className="ver">M1</span>
         </div>
         <div className="status">
-          <Chip ok={sys.codex.ok} label={sys.codex.ok ? 'AI 엔진 준비됨' : 'AI 엔진 없음'} />
-          <Chip ok={sys.loggedIn} label={sys.loggedIn ? '로그인됨' : '로그인 필요'} />
+          <Chip ok={sys.loggedIn} label={sys.loggedIn ? '연결됨' : '로그인 필요'} />
+          <select
+            className="model-select"
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            title="모델 선택"
+          >
+            <option value="gpt-5.5">gpt-5.5 · 기본</option>
+            <option value="gpt-5.5-codex">gpt-5.5-codex · 코딩</option>
+            <option value="o3">o3 · 깊은 추론</option>
+          </select>
           <button className="folder-btn" onClick={pickFolder}>
             {cwd ? `📁 ${shorten(cwd)}` : '📁 작업 폴더'}
           </button>
@@ -151,49 +162,43 @@ export function App() {
         onPreset={runPreset}
       />
 
-      <footer className="composer">
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              send()
+      <div className="composer-wrap">
+        <div className="composer">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                send()
+              }
+            }}
+            placeholder={
+              !cwd ? '먼저 작업 폴더를 골라주세요' : '무엇을 도와드릴까요? (예: 이 폴더 설명해줘)'
             }
-          }}
-          placeholder={
-            !cwd ? '먼저 작업 폴더를 골라주세요' : '무엇을 도와드릴까요? (예: 이 폴더 설명해줘)'
-          }
-          disabled={!ready || running}
-          rows={2}
-        />
-        <button className="send" onClick={send} disabled={!ready || running || !input.trim()}>
-          {running ? '…' : '보내기'}
-        </button>
-      </footer>
-
-      <div className={`modebar ${writeMode ? 'work' : 'plan'}`}>
-        <span className="seal">{writeMode ? '작업' : '안전'}<br />{writeMode ? '허용' : '모드'}</span>
-        <span className="modedesc">
-          {writeMode ? (
-            <>
-              <b>작업 모드</b> · AI가 이 폴더의 <b>파일을 직접 수정</b>할 수 있어요
-            </>
-          ) : (
-            <>
-              <b>계획만</b> · 파일은 바꾸지 않고 설명·계획만 해요
-            </>
-          )}
-        </span>
-        <label className="switch" title="켜면 AI가 파일을 직접 수정할 수 있어요">
-          <span className="switch-text">수정 허용</span>
-          <input
-            type="checkbox"
-            checked={writeMode}
-            onChange={(e) => setWriteMode(e.target.checked)}
+            disabled={!ready || running}
+            rows={2}
           />
-          <span className="slider" />
-        </label>
+          <button className="send" onClick={send} disabled={!ready || running || !input.trim()}>
+            {running ? '…' : '보내기'}
+          </button>
+        </div>
+        <div className="composer-foot">
+          <div className="segmented" role="tablist">
+            <button className={`seg ${!writeMode ? 'on' : ''}`} onClick={() => setWriteMode(false)}>
+              계획만
+            </button>
+            <button
+              className={`seg ${writeMode ? 'on danger' : ''}`}
+              onClick={() => setWriteMode(true)}
+            >
+              수정 허용
+            </button>
+          </div>
+          <span className={`foot-note ${writeMode ? 'warn' : ''}`}>
+            {writeMode ? 'AI가 이 폴더의 파일을 직접 수정할 수 있어요' : '파일은 바꾸지 않고 설명·계획만 해요'}
+          </span>
+        </div>
       </div>
     </div>
   )

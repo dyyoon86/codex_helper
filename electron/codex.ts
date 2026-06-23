@@ -175,6 +175,11 @@ export function runCodex(req: RunRequest, h: RunHandlers): Promise<RunResult> {
   const args = req.sessionId
     ? ['exec', 'resume', req.sessionId, '--json', '--skip-git-repo-check', '-c', `sandbox_mode=${sandbox}`]
     : ['exec', '--json', '--skip-git-repo-check', '-s', sandbox]
+  // 모델 지정: 새 세션은 -m, resume은 -c model=
+  if (req.model) {
+    if (req.sessionId) args.push('-c', `model=${req.model}`)
+    else args.push('-m', req.model)
+  }
 
   return new Promise((resolve) => {
     let threadId: string | undefined

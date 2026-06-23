@@ -9,6 +9,8 @@ export interface RunRequest {
   sessionId?: string
   /** 새 세션 첫 턴의 샌드박스. 기본 read-only(계획만). */
   sandbox?: Sandbox
+  /** 사용할 모델. 비우면 codex 기본(gpt-5.5). */
+  model?: string
 }
 
 export interface RateWindow {

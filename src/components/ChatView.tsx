@@ -32,8 +32,7 @@ export function ChatView({ messages, hasFolder, onPickFolder, onPreset }: Props)
     return (
       <main className="chat empty">
         <div className="welcome">
-          <div className="seal-ghost">안전<br />모드</div>
-          <h1 className="welcome-title">안녕하세요 👋<br />무엇을 도와드릴까요?</h1>
+          <h1 className="welcome-title">무엇을 도와드릴까요?</h1>
           <p className="welcome-sub">
             {hasFolder ? (
               <>아래에서 골라 바로 시작하거나, 직접 적어 보세요.</>

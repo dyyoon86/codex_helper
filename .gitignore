@@ -1,0 +1,33 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# build output
+dist/
+build/
+out/
+release/
+*.exe
+*.zip
+
+# electron / packaging
+app-builds/
+
+# local runtime/state (포터블 data 폴더)
+data/
+*.log
+logs/
+
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# editor
+.vscode/
+.idea/

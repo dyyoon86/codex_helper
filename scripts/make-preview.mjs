@@ -65,7 +65,10 @@ const mock = `<script>
     if (step === 1 && ta && !ta.disabled) { setNativeValue(ta, '이 폴더 설명해줘'); step = 2; return; }
     var s = document.querySelector('.send');
     if (step === 2 && s && !s.disabled) { s.click(); step = 3; return; }
-    if (step === 3 && document.querySelector('.bubble.assistant .text')) { clearInterval(timer); window.__ready = true; }
+    if (step === 3 && document.querySelector('.bubble.assistant .text')) {
+      var sw = document.querySelector('.switch input'); if (sw) sw.click(); step = 4; return;
+    }
+    if (step === 4) { clearInterval(timer); window.__ready = true; }
   }, 80);
 })();
 </script>`

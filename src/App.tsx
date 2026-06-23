@@ -13,6 +13,7 @@ export function App() {
   const [input, setInput] = useState('')
   const [running, setRunning] = useState(false)
   const [usage, setUsage] = useState<UsageInfo | null>(null)
+  const [writeMode, setWriteMode] = useState(false) // false=계획만(read-only), true=작업(수정허용)
   const sessionId = useRef<string | undefined>(undefined)
 
   async function refresh(): Promise<SystemStatus> {
@@ -60,7 +61,12 @@ export function App() {
 
     try {
       const res = await window.codex.runCodex(
-        { prompt, cwd: dir, sessionId: sessionId.current, sandbox: 'read-only' },
+        {
+          prompt,
+          cwd: dir,
+          sessionId: sessionId.current,
+          sandbox: writeMode ? 'workspace-write' : 'read-only',
+        },
         runId,
       )
       if (res.threadId) sessionId.current = res.threadId
@@ -166,9 +172,28 @@ export function App() {
         </button>
       </footer>
 
-      <div className="safenote">
-        <span className="seal">안전<br />모드</span>
-        지금은 <b style={{ color: 'var(--ink)' }}>계획만</b> 봅니다 · 파일은 승인하기 전엔 바꾸지 않아요
+      <div className={`modebar ${writeMode ? 'work' : 'plan'}`}>
+        <span className="seal">{writeMode ? '작업' : '안전'}<br />{writeMode ? '허용' : '모드'}</span>
+        <span className="modedesc">
+          {writeMode ? (
+            <>
+              <b>작업 모드</b> · AI가 이 폴더의 <b>파일을 직접 수정</b>할 수 있어요
+            </>
+          ) : (
+            <>
+              <b>계획만</b> · 파일은 바꾸지 않고 설명·계획만 해요
+            </>
+          )}
+        </span>
+        <label className="switch" title="켜면 AI가 파일을 직접 수정할 수 있어요">
+          <span className="switch-text">수정 허용</span>
+          <input
+            type="checkbox"
+            checked={writeMode}
+            onChange={(e) => setWriteMode(e.target.checked)}
+          />
+          <span className="slider" />
+        </label>
       </div>
     </div>
   )

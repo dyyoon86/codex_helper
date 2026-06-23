@@ -169,10 +169,12 @@ export interface RunHandlers {
  */
 export function runCodex(req: RunRequest, h: RunHandlers): Promise<RunResult> {
   const bin = resolveCodexBin()
+  const sandbox = req.sandbox ?? 'read-only'
   // 프롬프트는 인자 대신 stdin으로 전달(셸 따옴표/줄바꿈/특수문자 안전).
+  // resume은 -s 를 안 받으므로 -c sandbox_mode 로 모드 유지(따옴표 없이 = 셸 안전).
   const args = req.sessionId
-    ? ['exec', 'resume', req.sessionId, '--json', '--skip-git-repo-check']
-    : ['exec', '--json', '--skip-git-repo-check', '-s', req.sandbox ?? 'read-only']
+    ? ['exec', 'resume', req.sessionId, '--json', '--skip-git-repo-check', '-c', `sandbox_mode=${sandbox}`]
+    : ['exec', '--json', '--skip-git-repo-check', '-s', sandbox]
 
   return new Promise((resolve) => {
     let threadId: string | undefined

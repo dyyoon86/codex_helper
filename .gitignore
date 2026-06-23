@@ -35,3 +35,4 @@ Thumbs.db
 # preview/screenshot 산출물
 preview*.png
 dist/preview*.html
+dist-electron/

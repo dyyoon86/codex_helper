@@ -31,3 +31,7 @@ Thumbs.db
 # editor
 .vscode/
 .idea/
+
+# preview/screenshot 산출물
+preview*.png
+dist/preview*.html

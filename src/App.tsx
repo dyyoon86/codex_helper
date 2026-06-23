@@ -14,28 +14,24 @@ export function App() {
   const [usage, setUsage] = useState<UsageInfo | null>(null)
   const sessionId = useRef<string | undefined>(undefined)
 
-  // 시작 시 codex 상태 점검 + 마지막 사용량 표시
   useEffect(() => {
     window.codex.checkCodex().then(setStatus)
     window.codex.getLatestUsage().then(setUsage)
   }, [])
 
-  async function pickFolder() {
+  async function pickFolder(): Promise<string | null> {
     const dir = await window.codex.selectFolder()
     if (dir) {
       setCwd(dir)
-      // 폴더 바꾸면 새 세션
       sessionId.current = undefined
       setMessages([])
     }
+    return dir
   }
 
-  async function send() {
-    const prompt = input.trim()
-    if (!prompt || !cwd || running) return
-    setInput('')
+  async function sendWith(prompt: string, dir: string) {
+    if (!prompt.trim() || running) return
     setRunning(true)
-
     const runId = `run-${++runCounter}`
     const userMsg: ChatMessage = { id: `${runId}-u`, role: 'user', text: prompt }
     const aiMsg: ChatMessage = { id: `${runId}-a`, role: 'assistant', text: '', progress: [] }
@@ -57,7 +53,7 @@ export function App() {
 
     try {
       const res = await window.codex.runCodex(
-        { prompt, cwd, sessionId: sessionId.current, sandbox: 'read-only' },
+        { prompt, cwd: dir, sessionId: sessionId.current, sandbox: 'read-only' },
         runId,
       )
       if (res.threadId) sessionId.current = res.threadId
@@ -65,7 +61,7 @@ export function App() {
       if (res.error && !res.finalMessage) {
         setMessages((m) =>
           m.map((msg) =>
-            msg.id === aiMsg.id ? { ...msg, text: `⚠ 오류: ${res.error}`, error: true } : msg,
+            msg.id === aiMsg.id ? { ...msg, text: `문제가 생겼어요: ${res.error}`, error: true } : msg,
           ),
         )
       }
@@ -75,24 +71,53 @@ export function App() {
     }
   }
 
+  async function send() {
+    const prompt = input.trim()
+    if (!prompt || !cwd) return
+    setInput('')
+    await sendWith(prompt, cwd)
+  }
+
+  // 시작 화면 프리셋: 폴더 없으면 먼저 고르고 실행
+  async function runPreset(prompt: string) {
+    let dir = cwd
+    if (!dir) {
+      dir = await pickFolder()
+      if (!dir) return
+    }
+    await sendWith(prompt, dir)
+  }
+
   const ready = status?.installed && status?.loggedIn && cwd
 
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand">작업실 <span className="ver">M1</span></div>
+        <div className="brand">
+          <span className="mark">작업실</span>
+          <span className="dot" />
+          <span className="ver">M1</span>
+        </div>
         <div className="status">
-          <Chip ok={!!status?.installed} label={status?.installed ? `엔진 ${status.version ?? ''}` : '엔진 없음'} />
+          <Chip
+            ok={!!status?.installed}
+            label={status?.installed ? 'AI 엔진 준비됨' : 'AI 엔진 없음'}
+          />
           <Chip ok={!!status?.loggedIn} label={status?.loggedIn ? '로그인됨' : '로그인 필요'} />
           <button className="folder-btn" onClick={pickFolder}>
-            {cwd ? `📁 ${shorten(cwd)}` : '📁 작업 폴더 선택'}
+            {cwd ? `📁 ${shorten(cwd)}` : '📁 작업 폴더'}
           </button>
         </div>
       </header>
 
       <UsageBar usage={usage} />
 
-      <ChatView messages={messages} empty={!cwd} />
+      <ChatView
+        messages={messages}
+        hasFolder={!!cwd}
+        onPickFolder={pickFolder}
+        onPreset={runPreset}
+      />
 
       <footer className="composer">
         <textarea
@@ -105,7 +130,7 @@ export function App() {
             }
           }}
           placeholder={
-            !cwd ? '먼저 작업 폴더를 선택하세요' : '무엇을 도와드릴까요? (예: 이 폴더 설명해줘)'
+            !cwd ? '먼저 작업 폴더를 골라주세요' : '무엇을 도와드릴까요? (예: 이 폴더 설명해줘)'
           }
           disabled={!ready || running}
           rows={2}
@@ -114,15 +139,22 @@ export function App() {
           {running ? '…' : '보내기'}
         </button>
       </footer>
-      {cwd && (
-        <div className="safenote">🔒 안전모드(계획만): 파일을 수정하지 않고 설명·계획만 합니다.</div>
-      )}
+
+      <div className="safenote">
+        <span className="seal">안전<br />모드</span>
+        지금은 <b style={{ color: 'var(--ink)' }}>계획만</b> 봅니다 · 파일은 승인하기 전엔 바꾸지 않아요
+      </div>
     </div>
   )
 }
 
 function Chip({ ok, label }: { ok: boolean; label: string }) {
-  return <span className={`chip ${ok ? 'ok' : 'no'}`}>{ok ? '✅' : '❌'} {label}</span>
+  return (
+    <span className={`chip ${ok ? 'ok' : 'no'}`}>
+      <span className="led" />
+      {label}
+    </span>
+  )
 }
 
 function shorten(p: string) {

@@ -5,7 +5,6 @@ export interface ChatMessage {
   role: 'user' | 'assistant'
   text: string
   progress?: string[]
-  usage?: Record<string, number>
   error?: boolean
 }
 
@@ -67,18 +66,9 @@ export function ChatView({ messages, hasFolder, onPickFolder, onPreset }: Props)
             <div className="progress">{m.progress[m.progress.length - 1]}</div>
           )}
           <div className="text">{m.text || (m.role === 'assistant' ? '…' : '')}</div>
-          {m.usage && (
-            <div className="usage">
-              이번 답변 · 입력 {fmt(m.usage.input_tokens)} · 출력 {fmt(m.usage.output_tokens)} 토큰
-            </div>
-          )}
         </div>
       ))}
       <div ref={endRef} />
     </main>
   )
-}
-
-function fmt(n?: number) {
-  return (n ?? 0).toLocaleString()
 }

@@ -8,6 +8,7 @@ import type {
   SystemStatus,
   SetupResult,
   SetupEvent,
+  ApprovalRequest,
 } from '../src/shared/types'
 
 // 렌더러에 안전한 API만 노출(Node 직접 접근 차단).
@@ -34,5 +35,14 @@ contextBridge.exposeInMainWorld('codex', {
     const listener = (_e: unknown, data: CodexStreamEvent) => cb(data)
     ipcRenderer.on('codex:event', listener)
     return () => ipcRenderer.removeListener('codex:event', listener)
+  },
+
+  onApproval: (cb: (req: ApprovalRequest) => void): (() => void) => {
+    const listener = (_e: unknown, data: ApprovalRequest) => cb(data)
+    ipcRenderer.on('approval:request', listener)
+    return () => ipcRenderer.removeListener('approval:request', listener)
+  },
+  respondApproval: (requestId: number | string, decision: 'accept' | 'decline'): void => {
+    ipcRenderer.invoke('approval:respond', requestId, decision)
   },
 })

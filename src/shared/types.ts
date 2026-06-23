@@ -48,7 +48,7 @@ export interface CodexStreamEvent {
   /** kind=thread: thread_id / message: 텍스트 / progress: 설명 / usage: JSON문자열 / stderr: 줄 */
   text?: string
   threadId?: string
-  usage?: Record<string, number>
+  usage?: UsageInfo
   /** 원본 이벤트 type(디버그/고급 로그용) */
   rawType?: string
 }
@@ -91,6 +91,13 @@ export interface SetupResult {
   status: SystemStatus
 }
 
+export interface ApprovalRequest {
+  requestId: number | string
+  kind: 'command' | 'file' | 'permission' | 'input'
+  title: string
+  detail: string
+}
+
 export interface CodexAPI {
   selectFolder: () => Promise<string | null>
   checkCodex: () => Promise<CodexStatus>
@@ -105,6 +112,10 @@ export interface CodexAPI {
   /** 시작 시 마지막으로 알려진 사용량/한도(가장 최근 세션 기준). 없으면 null */
   getLatestUsage: () => Promise<UsageInfo | null>
   onStream: (cb: (e: CodexStreamEvent) => void) => () => void
+  /** AI가 위험 작업 전 승인 요청 시 호출 */
+  onApproval: (cb: (req: ApprovalRequest) => void) => () => void
+  /** 승인 모달의 사용자 결정 전달 */
+  respondApproval: (requestId: number | string, decision: 'accept' | 'decline') => void
 }
 
 declare global {

@@ -1,7 +1,8 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { checkCodex, runCodex, getLatestUsage } from './codex'
+import { checkCodex, getLatestUsage } from './codex'
+import { runTurn, setApprovalHandler, getUsage, type ApprovalRequest } from './appserver'
 import { checkSystem, installDeps, login } from './system'
 import type { RunRequest, CodexStreamEvent, SetupEvent } from '../src/shared/types'
 
@@ -52,7 +53,23 @@ app.whenReady().then(() => {
   ipcMain.handle('codex:check', async () => checkCodex())
 
   // 마지막으로 알려진 사용량/한도(시작 시 표시)
-  ipcMain.handle('codex:latestUsage', async () => getLatestUsage())
+  ipcMain.handle('codex:latestUsage', async () => (await getUsage()) ?? getLatestUsage())
+
+  // 승인 요청 브리지: app-server 서버요청 → 렌더러 모달 → 사용자 결정
+  const approvalWaiters = new Map<number | string, (d: 'accept' | 'decline') => void>()
+  setApprovalHandler((req: ApprovalRequest) => {
+    return new Promise<'accept' | 'decline'>((resolve) => {
+      approvalWaiters.set(req.requestId, resolve)
+      win?.webContents.send('approval:request', req)
+    })
+  })
+  ipcMain.handle('approval:respond', async (_e, requestId, decision) => {
+    const w = approvalWaiters.get(requestId)
+    if (w) {
+      w(decision)
+      approvalWaiters.delete(requestId)
+    }
+  })
 
   // 첫 실행 점검 / 설치 / 로그인
   ipcMain.handle('system:check', async () => checkSystem())
@@ -65,17 +82,14 @@ app.whenReady().then(() => {
     return login(emit)
   })
 
-  // codex 실행(스트리밍은 'codex:event'로 push)
+  // codex 실행(app-server 턴, 스트리밍은 'codex:event'로 push)
   ipcMain.handle('codex:run', async (e, req: RunRequest, runId: string) => {
     const send = (ev: Omit<CodexStreamEvent, 'runId'>) =>
       e.sender.send('codex:event', { runId, ...ev } satisfies CodexStreamEvent)
-
-    return runCodex(req, {
-      onThreadId: (threadId) => send({ kind: 'thread', threadId }),
-      onAgentMessage: (text) => send({ kind: 'message', text }),
-      onProgress: (text, rawType) => send({ kind: 'progress', text, rawType }),
+    return runTurn(req, {
+      onMessageDelta: (text) => send({ kind: 'message', text }),
+      onProgress: (text) => send({ kind: 'progress', text }),
       onUsage: (usage) => send({ kind: 'usage', usage }),
-      onStderr: (line) => send({ kind: 'stderr', text: line }),
     })
   })
 

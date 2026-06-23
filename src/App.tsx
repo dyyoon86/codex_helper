@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import type { SystemStatus, UsageInfo } from './shared/types'
+import type { SystemStatus, UsageInfo, ApprovalRequest } from './shared/types'
 import { ChatView, type ChatMessage } from './components/ChatView'
 import { UsageBar } from './components/UsageBar'
 import { SetupGate } from './components/SetupGate'
+import { ApprovalModal } from './components/ApprovalModal'
 
 let runCounter = 0
 
@@ -15,7 +16,17 @@ export function App() {
   const [usage, setUsage] = useState<UsageInfo | null>(null)
   const [writeMode, setWriteMode] = useState(false) // false=계획만(read-only), true=작업(수정허용)
   const [model, setModel] = useState('gpt-5.5')
+  const [approval, setApproval] = useState<ApprovalRequest | null>(null)
   const sessionId = useRef<string | undefined>(undefined)
+
+  useEffect(() => {
+    return window.codex.onApproval((req) => setApproval(req))
+  }, [])
+
+  function decideApproval(d: 'accept' | 'decline') {
+    if (approval) window.codex.respondApproval(approval.requestId, d)
+    setApproval(null)
+  }
 
   async function refresh(): Promise<SystemStatus> {
     const s = await window.codex.checkSystem()
@@ -48,13 +59,16 @@ export function App() {
 
     const off = window.codex.onStream((e) => {
       if (e.runId !== runId) return
+      if (e.kind === 'usage') {
+        if (e.usage) setUsage(e.usage)
+        return
+      }
       setMessages((m) =>
         m.map((msg) => {
           if (msg.id !== aiMsg.id) return msg
           if (e.kind === 'message') return { ...msg, text: (msg.text || '') + (e.text || '') }
           if (e.kind === 'progress')
             return { ...msg, progress: [...(msg.progress || []), e.text || ''] }
-          if (e.kind === 'usage') return { ...msg, usage: e.usage }
           return msg
         }),
       )
@@ -200,6 +214,8 @@ export function App() {
           </span>
         </div>
       </div>
+
+      <ApprovalModal req={approval} onDecide={decideApproval} />
     </div>
   )
 }

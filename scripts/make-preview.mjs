@@ -4,11 +4,15 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const dist = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist')
-const MODE = process.argv[2] || 'drive' // drive | welcome | setup
-const DRIVE = MODE === 'drive'
+const MODE = process.argv[2] || 'drive' // drive | welcome | setup | approval
+const DRIVE = MODE === 'drive' || MODE === 'approval'
 const SETUP = MODE === 'setup'
+const APPROVAL = MODE === 'approval'
 const OUT =
-  MODE === 'drive' ? 'preview.html' : MODE === 'welcome' ? 'preview-welcome.html' : 'preview-setup.html'
+  MODE === 'drive' ? 'preview.html'
+  : MODE === 'welcome' ? 'preview-welcome.html'
+  : MODE === 'setup' ? 'preview-setup.html'
+  : 'preview-approval.html'
 let html = readFileSync(join(dist, 'index.html'), 'utf-8')
 // 미리보기(캡처)용: CSP 메타 제거 → inline mock 스크립트 허용
 html = html.replace(/<meta[^>]*Content-Security-Policy[^>]*>/i, '')
@@ -34,9 +38,17 @@ const mock = `<script>
         secondary: { usedPercent: 56, windowMinutes: 10080, resetsAt: now + 4 * 86400 } };
     },
     onStream: function (cb) { window.codex._cb = cb; return function () { window.codex._cb = null; }; },
+    _appcb: null,
+    onApproval: function (cb) { window.codex._appcb = cb; return function () { window.codex._appcb = null; }; },
+    respondApproval: function () {},
     runCodex: async function (req, runId) {
       var cb = window.codex._cb;
       if (cb) cb({ runId: runId, kind: 'progress', text: '폴더 살펴보는 중…' });
+      if (${APPROVAL} && window.codex._appcb) {
+        window.codex._appcb({ requestId: 1, kind: 'command', title: '명령 실행 승인',
+          detail: 'npm install\\n\\n프로젝트에 필요한 패키지를 설치하려고 해요.' });
+        return new Promise(function () {}); // 모달 유지(캡처용)
+      }
       await new Promise(function (r) { setTimeout(r, 200); });
       var msg = '이 폴더에는 파일 8개가 있어요.\\n\\n' +
         '• 2026_1분기_매출.xlsx — 분기 매출 정리표\\n' +
